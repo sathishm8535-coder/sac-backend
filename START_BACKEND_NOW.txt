@@ -1,0 +1,35 @@
+# ⚠️ BACKEND NOT RUNNING - START IT NOW
+
+## The Problem
+Your frontend (port 3000) is running, but backend (port 5000) is NOT running.
+
+## The Solution
+
+### Open a NEW Terminal Window (keep frontend running)
+
+Then run these commands:
+
+```bash
+cd "C:\Workspace\sac net exam\backend"
+npm run dev
+```
+
+### If you see MongoDB error:
+
+```bash
+cd "C:\Workspace\sac net exam\backend"
+npm run seed
+npm run dev
+```
+
+## You MUST have 2 terminals open:
+- Terminal 1: Frontend (already running on port 3000) ✅
+- Terminal 2: Backend (START THIS NOW on port 5000) ❌
+
+## After starting backend, you should see:
+```
+✅ MongoDB Connected
+🚀 Server running on port 5000
+```
+
+Then refresh your browser!
