@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import Sidebar from '../components/Sidebar';
+import AdminLayout from '../components/AdminLayout';
 import toast from 'react-hot-toast';
 import { Plus, Trash2 } from 'lucide-react';
 
@@ -53,17 +53,16 @@ const Exams = () => {
   };
 
   return (
-    <div className="flex">
-      <Sidebar />
-      <div className="flex-1 p-8 bg-gray-50">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">Exams</h1>
-          <button onClick={() => setShowModal(true)} className="bg-indigo-600 text-white px-6 py-3 rounded-lg flex items-center gap-2 hover:bg-indigo-700">
-            <Plus className="w-5 h-5" /> Create Exam
+    <AdminLayout>
+      <div>
+        <div className="flex flex-wrap justify-between items-center gap-3 mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Exams</h1>
+          <button onClick={() => setShowModal(true)} className="bg-indigo-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg flex items-center gap-2 hover:bg-indigo-700 text-sm sm:text-base">
+            <Plus className="w-4 h-4 sm:w-5 sm:h-5" /> Create Exam
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {exams.map(exam => (
             <div key={exam._id} className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition">
               <h3 className="text-xl font-bold text-gray-800 mb-2">{exam.title}</h3>
@@ -120,7 +119,7 @@ const Exams = () => {
           </div>
         )}
       </div>
-    </div>
+    </AdminLayout>
   );
 };
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import Sidebar from '../components/Sidebar';
+import AdminLayout from '../components/AdminLayout';
 import toast from 'react-hot-toast';
 import { Download } from 'lucide-react';
 import jsPDF from 'jspdf';
@@ -83,23 +83,22 @@ const Results = () => {
   };
 
   return (
-    <div className="flex">
-      <Sidebar />
-      <div className="flex-1 p-8 bg-gray-50">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">Results</h1>
-          <div className="flex gap-4">
-            <button onClick={exportPDF} className="bg-red-600 text-white px-6 py-3 rounded-lg flex items-center gap-2 hover:bg-red-700">
-              <Download className="w-5 h-5" /> PDF
+    <AdminLayout>
+      <div>
+        <div className="flex flex-wrap justify-between items-center gap-3 mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Results</h1>
+          <div className="flex gap-2 sm:gap-4">
+            <button onClick={exportPDF} className="bg-red-600 text-white px-3 sm:px-6 py-2 sm:py-3 rounded-lg flex items-center gap-2 hover:bg-red-700 text-sm sm:text-base">
+              <Download className="w-4 h-4 sm:w-5 sm:h-5" /> PDF
             </button>
-            <button onClick={exportExcel} className="bg-green-600 text-white px-6 py-3 rounded-lg flex items-center gap-2 hover:bg-green-700">
-              <Download className="w-5 h-5" /> Excel
+            <button onClick={exportExcel} className="bg-green-600 text-white px-3 sm:px-6 py-2 sm:py-3 rounded-lg flex items-center gap-2 hover:bg-green-700 text-sm sm:text-base">
+              <Download className="w-4 h-4 sm:w-5 sm:h-5" /> Excel
             </button>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-md overflow-hidden">
-          <table className="w-full">
+        <div className="bg-white rounded-xl shadow-md overflow-x-auto">
+          <table className="w-full min-w-[700px]">
             <thead className="bg-indigo-600 text-white">
               <tr>
                 <th className="px-6 py-4 text-left">Student</th>
@@ -144,7 +143,7 @@ const Results = () => {
           </table>
         </div>
       </div>
-    </div>
+    </AdminLayout>
   );
 };
 
