@@ -11,8 +11,8 @@ export default defineConfig({
       devOptions: { enabled: false },   // disabled in dev mode
 
       manifest: {
-        name: 'Sac Net Exam',
-        short_name: 'Sac Net Exam',
+        name: 'Exam Management System',
+        short_name: 'ExamSystem',
         description: 'Online Examination Management System - Sadakathullah Appa College',
         start_url: '/',
         display: 'standalone',
@@ -20,7 +20,7 @@ export default defineConfig({
         background_color: '#ffffff',
         icons: [
           {
-            src: '/frontend/public/Assest/sadak1.jpg',
+            src: '/icons/icon-192x192.png',
             sizes: '192x192',
             type: 'image/png',
             purpose: 'any maskable'
