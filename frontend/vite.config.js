@@ -20,15 +20,15 @@ export default defineConfig({
         background_color: '#ffffff',
         icons: [
           {
-            src: '/icons/icon-192x192.png',
+            src: '/frontend/public/Assest/sadak1.jpg',
             sizes: '192x192',
-            type: 'image/png',
+            type: 'image/jpeg',
             purpose: 'any maskable'
           },
           {
-            src: '/icons/icon-512x512.png',
+            src: '/frontend/public/Assest/sadak1.jpg',
             sizes: '512x512',
-            type: 'image/png',
+            type: 'image/jpeg',
             purpose: 'any maskable'
           }
         ]
