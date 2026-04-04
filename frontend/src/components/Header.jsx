@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import InstallButton from './InstallButton';
 
 const Header = () => {
   const [scrolled, setScrolled] = useState(false);
@@ -17,7 +18,8 @@ const Header = () => {
         scrolled ? 'shadow-lg' : 'shadow-md'
       }`}
     >
-      <div className="flex items-center justify-center space-x-3 sm:space-x-4 p-3 sm:p-4">
+      <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
+        <div className="flex items-center space-x-3 sm:space-x-4">
         <img
           src="/Assest/sadak1.jpg"
           alt="Sadakathullah Appa College Logo"
@@ -27,9 +29,11 @@ const Header = () => {
             e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🎓%3C/text%3E%3C/svg%3E";
           }}
         />
-        <h1 className="text-lg sm:text-2xl md:text-3xl font-bold text-white tracking-wide">
-          Sadakathullah Appa College
-        </h1>
+          <h1 className="text-base sm:text-2xl md:text-3xl font-bold text-white tracking-wide">
+            Sadakathullah Appa College
+          </h1>
+        </div>
+        <InstallButton />
       </div>
     </header>
   );
