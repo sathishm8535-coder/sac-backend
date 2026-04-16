@@ -26,8 +26,7 @@ const StudentDashboard = () => {
               src="/Assest/sadak1.jpg"
               alt="App Logo"
               loading="lazy"
-              className="h-8 w-8 sm:h-10 sm:w-10 rounded-full object-cover border-2 border-white"
-              onError={(e) => { e.target.style.display = 'none'; }}
+              className="h-9 w-9 sm:h-11 sm:w-11 rounded-full object-cover border-2 border-white shadow-md flex-shrink-0"
             />
             <span className="font-bold text-sm sm:text-lg leading-tight">
               Sadakathullah Appa College

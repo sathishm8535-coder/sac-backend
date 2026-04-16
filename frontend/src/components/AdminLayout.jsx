@@ -22,8 +22,7 @@ const AdminLayout = ({ children }) => {
             src="/Assest/sadak1.jpg"
             alt="App Logo"
             loading="lazy"
-            className="h-8 w-8 rounded-full object-cover border border-white"
-            onError={(e) => { e.target.style.display = 'none'; }}
+            className="h-9 w-9 rounded-full object-cover border-2 border-white shadow-md flex-shrink-0"
           />
           <span className="text-white font-semibold text-sm truncate">
             Sadakathullah Appa College
