@@ -1,7 +1,6 @@
 import Certificate from '../models/Certificate.js';
 import Result from '../models/Result.js';
 import Exam from '../models/Exam.js';
-import { nanoid } from 'nanoid';
 
 const getGrade = (percentage) => {
   if (percentage >= 90) return 'O';
@@ -11,6 +10,19 @@ const getGrade = (percentage) => {
   if (percentage >= 50) return 'B';
   if (percentage >= 40) return 'C';
   return 'F';
+};
+
+// Generate structured unique certificate ID: SAC-YYYY-DEPT-XXXX
+const generateCertId = async (department) => {
+  const year  = new Date().getFullYear();
+  const dept  = (department || 'GEN').replace(/\s+/g, '').substring(0, 4).toUpperCase();
+  const count = await Certificate.countDocuments();
+  const seq   = String(count + 1).padStart(4, '0');
+  const id    = `SAC-${year}-${dept}-${seq}`;
+  // ensure uniqueness
+  const exists = await Certificate.findOne({ certificate_id: id });
+  if (exists) return `SAC-${year}-${dept}-${seq}X`;
+  return id;
 };
 
 // POST /api/certificates/generate/:resultId
@@ -35,7 +47,7 @@ export const generateCertificate = async (req, res) => {
     if (existing) return res.json(existing);
 
     const certificate = await Certificate.create({
-      certificate_id:  `SAC-${nanoid(10).toUpperCase()}`,
+      certificate_id:  await generateCertId(result.student_id.department),
       student_id:      result.student_id._id,
       exam_id:         result.exam_id._id,
       result_id:       result._id,
@@ -62,13 +74,16 @@ export const verifyCertificate = async (req, res) => {
       .populate('exam_id', 'title');
     if (!cert) return res.status(404).json({ valid: false, message: 'Certificate not found' });
     res.json({
-      valid: true,
+      valid:          true,
       certificate_id: cert.certificate_id,
       student_name:   cert.student_name,
       department:     cert.department,
       exam_name:      cert.exam_name,
+      score:          cert.score,
+      total_marks:    cert.total_marks,
       grade:          cert.grade,
-      issued_date:    cert.issued_date
+      issued_date:    cert.issued_date,
+      percentage:     ((cert.score / cert.total_marks) * 100).toFixed(1)
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

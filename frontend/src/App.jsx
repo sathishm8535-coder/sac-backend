@@ -13,6 +13,7 @@ import Subjects from './pages/Subjects';
 import Questions from './pages/Questions';
 import Exams from './pages/Exams';
 import Results from './pages/Results';
+import VerifyPage from './pages/VerifyPage';
 
 function App() {
   return (
@@ -44,6 +45,8 @@ function App() {
           <Route path="/student" element={<ProtectedRoute roles={['student']}><StudentDashboard /></ProtectedRoute>} />
           <Route path="/exam/:id" element={<ProtectedRoute roles={['student']}><SecureExamPage /></ProtectedRoute>} />
 
+          <Route path="/verify/:certId" element={<VerifyPage />} />
+          <Route path="/verify" element={<VerifyPage />} />
           <Route path="/" element={<Navigate to="/login" />} />
           <Route path="/admin" element={<Navigate to="/admin-dashboard" />} />
           <Route path="/staff" element={<Navigate to="/staff-dashboard" />} />
