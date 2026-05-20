@@ -7,7 +7,8 @@ const examSchema = new mongoose.Schema({
   duration: { type: Number, required: true },
   total_marks: { type: Number, required: true },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  resultPublished: { type: Boolean, default: false }
+  resultPublished:      { type: Boolean, default: false },
+  certificateEnabled:   { type: Boolean, default: true }
 }, { timestamps: true });
 
 export default mongoose.model('Exam', examSchema);

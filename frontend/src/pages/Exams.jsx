@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import AdminLayout from '../components/AdminLayout';
 import toast from 'react-hot-toast';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Award } from 'lucide-react';
 
 const Exams = () => {
   const [exams, setExams] = useState([]);
@@ -52,6 +52,16 @@ const Exams = () => {
     }
   };
 
+  const handleToggleCertificate = async (examId) => {
+    try {
+      const { data } = await axios.put(`/api/certificates/toggle/${examId}`);
+      setExams(exams.map(e => e._id === examId ? { ...e, certificateEnabled: data.certificateEnabled } : e));
+      toast.success(`Certificate ${data.certificateEnabled ? 'enabled' : 'disabled'}`);
+    } catch {
+      toast.error('Failed to toggle certificate');
+    }
+  };
+
   return (
     <AdminLayout>
       <div>
@@ -72,6 +82,17 @@ const Exams = () => {
                 <p>Duration: {exam.duration} mins</p>
                 <p>Total Marks: {exam.total_marks}</p>
               </div>
+              <button
+                onClick={() => handleToggleCertificate(exam._id)}
+                className={`w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium mb-2 transition ${
+                  exam.certificateEnabled
+                    ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                }`}
+              >
+                <Award className="w-4 h-4" />
+                {exam.certificateEnabled ? 'Certificate ON' : 'Certificate OFF'}
+              </button>
               <button onClick={() => handleDelete(exam._id)} className="w-full bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 flex items-center justify-center gap-2">
                 <Trash2 className="w-4 h-4" /> Delete
               </button>

@@ -2,12 +2,14 @@ import { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { LogOut, Menu, X } from 'lucide-react';
+import { LogOut, Menu, X, Award } from 'lucide-react';
+import CertificateModal from '../components/CertificateModal';
 
 const StudentDashboard = () => {
   const [exams, setExams] = useState([]);
   const [results, setResults] = useState([]);
   const [navOpen, setNavOpen] = useState(false);
+  const [activeCert, setActiveCert] = useState(null);
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
 
@@ -16,8 +18,18 @@ const StudentDashboard = () => {
     axios.get('/api/results/my-results').then(({ data }) => setResults(data));
   }, []);
 
+  const handleGetCertificate = async (resultId) => {
+    try {
+      const { data } = await axios.post(`/api/certificates/generate/${resultId}`);
+      setActiveCert(data);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Could not generate certificate');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
+      {activeCert && <CertificateModal cert={activeCert} onClose={() => setActiveCert(null)} />}
       {/* Navbar */}
       <nav className="bg-indigo-900 text-white sticky top-0 z-40">
         <div className="flex justify-between items-center px-4 sm:px-6 py-3">
@@ -110,6 +122,7 @@ const StudentDashboard = () => {
                   <th className="px-4 sm:px-6 py-3 sm:py-4 text-left text-sm">Score</th>
                   <th className="px-4 sm:px-6 py-3 sm:py-4 text-left text-sm">%</th>
                   <th className="px-4 sm:px-6 py-3 sm:py-4 text-left text-sm">Status</th>
+                  <th className="px-4 sm:px-6 py-3 sm:py-4 text-left text-sm">Certificate</th>
                 </tr>
               </thead>
               <tbody>
@@ -127,6 +140,18 @@ const StudentDashboard = () => {
                       }`}>
                         {(r.score / r.total_marks) >= 0.4 ? 'Pass' : 'Fail'}
                       </span>
+                    </td>
+                    <td className="px-4 sm:px-6 py-3 sm:py-4">
+                      {(r.score / r.total_marks) >= 0.4 ? (
+                        <button
+                          onClick={() => handleGetCertificate(r._id)}
+                          className="flex items-center gap-1 bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 text-xs font-medium"
+                        >
+                          <Award className="w-3.5 h-3.5" /> Certificate
+                        </button>
+                      ) : (
+                        <span className="text-gray-400 text-xs">Not eligible</span>
+                      )}
                     </td>
                   </tr>
                 ))}

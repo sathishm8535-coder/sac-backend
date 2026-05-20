@@ -8,6 +8,7 @@ import questionRoutes from './routes/questionRoutes.js';
 import examRoutes from './routes/examRoutes.js';
 import resultRoutes from './routes/resultRoutes.js';
 import examSessionRoutes from './routes/examSessionRoutes.js';
+import certificateRoutes from './routes/certificateRoutes.js';
 
 dotenv.config();
 
@@ -24,6 +25,7 @@ app.use('/api/questions', questionRoutes);
 app.use('/api/exams', examRoutes);
 app.use('/api/results', resultRoutes);
 app.use('/api/exam-sessions', examSessionRoutes);
+app.use('/api/certificates', certificateRoutes);
 
 app.get('/', (req, res) => res.send('Exam System API'));
 
