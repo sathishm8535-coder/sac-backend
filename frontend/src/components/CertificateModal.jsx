@@ -14,14 +14,7 @@ const POSITIONS = {
   certId:      { x: 0.5,   y: 0.870, fontSize: 11, color: '#6b7280', bold: false, align: 'center' },
 };
 
-const drawCertificate = (canvas, cert, bgImage) => {
-  const ctx = canvas.getContext('2d');
-  const W = canvas.width;
-  const H = canvas.height;
-
-  // Draw background template
-  ctx.drawImage(bgImage, 0, 0, W, H);
-
+const drawText = (ctx, W, H, cert) => {
   const date = new Date(cert.issued_date).toLocaleDateString('en-IN', {
     day: 'numeric', month: 'long', year: 'numeric'
   });
@@ -55,41 +48,41 @@ const CertificateModal = ({ cert, onClose }) => {
   const [bgLoaded, setBgLoaded] = useState(false);
   const bgRef = useRef(null);
 
-  const BG_IMAGE = '/Assest/WhatsApp Image 2026-05-20 at 12.40.54 PM.jpeg';
+  const BG_IMAGE = '/Assest/certificate-template.jpg';
 
   useEffect(() => {
-    const img = new Image();
+    const img = new window.Image();
     img.crossOrigin = 'anonymous';
-    img.src = BG_IMAGE;
     img.onload = () => {
       bgRef.current = img;
       setBgLoaded(true);
     };
     img.onerror = () => {
-      // fallback: draw plain white background
       bgRef.current = null;
       setBgLoaded(true);
     };
+    img.src = BG_IMAGE;
   }, []);
 
   useEffect(() => {
     if (!bgLoaded || !canvasRef.current) return;
     const canvas = canvasRef.current;
-    canvas.width  = 1123; // A4 landscape px at 96dpi
+    canvas.width  = 1123;
     canvas.height = 794;
+    const ctx = canvas.getContext('2d');
 
     if (bgRef.current) {
-      drawCertificate(canvas, cert, bgRef.current);
+      ctx.drawImage(bgRef.current, 0, 0, canvas.width, canvas.height);
     } else {
-      // Fallback plain design if image fails
-      const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#fff';
+      // Fallback plain design
+      ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.strokeStyle = '#4f46e5';
       ctx.lineWidth = 12;
       ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
-      drawCertificate(canvas, cert, { width: 0, height: 0 });
     }
+    // Always draw text on top
+    drawText(ctx, canvas.width, canvas.height, cert);
   }, [bgLoaded, cert]);
 
   const handleDownloadPDF = async () => {
@@ -98,8 +91,12 @@ const CertificateModal = ({ cert, onClose }) => {
     try {
       const canvas = canvasRef.current;
       const imgData = canvas.toDataURL('image/png', 1.0);
-      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-      pdf.addImage(imgData, 'PNG', 0, 0, 297, 210);
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'px',
+        format: [canvas.width, canvas.height]
+      });
+      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
       pdf.save(`certificate-${cert.certificate_id}.pdf`);
     } finally {
       setDownloading(false);
