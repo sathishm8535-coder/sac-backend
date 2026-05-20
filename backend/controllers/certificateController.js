@@ -27,7 +27,9 @@ export const generateCertificate = async (req, res) => {
     if (percentage < 40) return res.status(400).json({ message: 'Only passed students can get certificates' });
 
     const exam = await Exam.findById(result.exam_id._id);
-    if (!exam.certificateEnabled) return res.status(403).json({ message: 'Certificate generation is disabled for this exam' });
+    if (!exam) return res.status(404).json({ message: 'Exam not found' });
+    // certificateEnabled defaults to true for exams created before this field existed
+    if (exam.certificateEnabled === false) return res.status(403).json({ message: 'Certificate generation is disabled for this exam' });
 
     const existing = await Certificate.findOne({ result_id: result._id });
     if (existing) return res.json(existing);
