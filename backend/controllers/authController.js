@@ -6,7 +6,7 @@ const signToken = (id) => jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: 
 // Student registration
 export const register = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, department } = req.body;
 
     if (!name || !email || !password)
       return res.status(400).json({ message: 'Name, email and password are required' });
@@ -14,7 +14,7 @@ export const register = async (req, res) => {
     if (await User.findOne({ email }))
       return res.status(400).json({ message: 'Email already exists' });
 
-    const user = await User.create({ name, email, password, role: 'student' });
+    const user = await User.create({ name, email, password, department: department || '', role: 'student' });
     const token = signToken(user._id);
 
     res.status(201).json({

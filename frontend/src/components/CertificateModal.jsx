@@ -1,149 +1,211 @@
-import { useRef, useState } from 'react';
-import html2canvas from 'html2canvas';
+import { useRef, useState, useEffect } from 'react';
 import jsPDF from 'jspdf';
-import { X, Download, Award } from 'lucide-react';
+import { X, Download, Award, ShieldCheck, Image } from 'lucide-react';
+
+// Text positions mapped to the WhatsApp certificate template
+// Adjust x/y values here if the template image layout changes
+const POSITIONS = {
+  studentName: { x: 0.5,   y: 0.445, fontSize: 28, color: '#1e3a5f', bold: true,  align: 'center' },
+  department:  { x: 0.5,   y: 0.515, fontSize: 16, color: '#374151', bold: false, align: 'center' },
+  examName:    { x: 0.5,   y: 0.595, fontSize: 15, color: '#1e3a5f', bold: true,  align: 'center' },
+  score:       { x: 0.5,   y: 0.655, fontSize: 14, color: '#374151', bold: false, align: 'center' },
+  grade:       { x: 0.5,   y: 0.705, fontSize: 18, color: '#1e3a5f', bold: true,  align: 'center' },
+  date:        { x: 0.5,   y: 0.820, fontSize: 13, color: '#374151', bold: false, align: 'center' },
+  certId:      { x: 0.5,   y: 0.870, fontSize: 11, color: '#6b7280', bold: false, align: 'center' },
+};
+
+const drawCertificate = (canvas, cert, bgImage) => {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width;
+  const H = canvas.height;
+
+  // Draw background template
+  ctx.drawImage(bgImage, 0, 0, W, H);
+
+  const date = new Date(cert.issued_date).toLocaleDateString('en-IN', {
+    day: 'numeric', month: 'long', year: 'numeric'
+  });
+  const percentage = ((cert.score / cert.total_marks) * 100).toFixed(1);
+
+  const fields = [
+    { key: 'studentName', text: cert.student_name },
+    { key: 'department',  text: cert.department || 'Sadakathullah Appa College' },
+    { key: 'examName',    text: cert.exam_name },
+    { key: 'score',       text: `Score: ${cert.score} / ${cert.total_marks}  (${percentage}%)` },
+    { key: 'grade',       text: `Grade: ${cert.grade}` },
+    { key: 'date',        text: `Date: ${date}` },
+    { key: 'certId',      text: `Certificate ID: ${cert.certificate_id}` },
+  ];
+
+  fields.forEach(({ key, text }) => {
+    const pos = POSITIONS[key];
+    ctx.font = `${pos.bold ? 'bold' : 'normal'} ${pos.fontSize}px Georgia, serif`;
+    ctx.fillStyle = pos.color;
+    ctx.textAlign = pos.align;
+    ctx.fillText(text, W * pos.x, H * pos.y);
+  });
+};
 
 const CertificateModal = ({ cert, onClose }) => {
-  const certRef = useRef();
+  const canvasRef = useRef();
   const [downloading, setDownloading] = useState(false);
+  const [downloadType, setDownloadType] = useState(null);
+  const [verifying, setVerifying] = useState(false);
+  const [verifyResult, setVerifyResult] = useState(null);
+  const [bgLoaded, setBgLoaded] = useState(false);
+  const bgRef = useRef(null);
 
-  const handleDownload = async () => {
+  const BG_IMAGE = '/Assest/WhatsApp Image 2026-05-20 at 12.40.54 PM.jpeg';
+
+  useEffect(() => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = BG_IMAGE;
+    img.onload = () => {
+      bgRef.current = img;
+      setBgLoaded(true);
+    };
+    img.onerror = () => {
+      // fallback: draw plain white background
+      bgRef.current = null;
+      setBgLoaded(true);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!bgLoaded || !canvasRef.current) return;
+    const canvas = canvasRef.current;
+    canvas.width  = 1123; // A4 landscape px at 96dpi
+    canvas.height = 794;
+
+    if (bgRef.current) {
+      drawCertificate(canvas, cert, bgRef.current);
+    } else {
+      // Fallback plain design if image fails
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = '#4f46e5';
+      ctx.lineWidth = 12;
+      ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
+      drawCertificate(canvas, cert, { width: 0, height: 0 });
+    }
+  }, [bgLoaded, cert]);
+
+  const handleDownloadPDF = async () => {
     setDownloading(true);
+    setDownloadType('pdf');
     try {
-      const canvas = await html2canvas(certRef.current, { scale: 2, useCORS: true });
-      const imgData = canvas.toDataURL('image/png');
+      const canvas = canvasRef.current;
+      const imgData = canvas.toDataURL('image/png', 1.0);
       const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
       pdf.addImage(imgData, 'PNG', 0, 0, 297, 210);
       pdf.save(`certificate-${cert.certificate_id}.pdf`);
     } finally {
       setDownloading(false);
+      setDownloadType(null);
     }
   };
 
-  const percentage = ((cert.score / cert.total_marks) * 100).toFixed(1);
-  const date = new Date(cert.issued_date).toLocaleDateString('en-IN', {
-    day: 'numeric', month: 'long', year: 'numeric'
-  });
+  const handleDownloadPNG = () => {
+    const canvas = canvasRef.current;
+    const link = document.createElement('a');
+    link.download = `certificate-${cert.certificate_id}.png`;
+    link.href = canvas.toDataURL('image/png', 1.0);
+    link.click();
+  };
+
+  const handleVerify = async () => {
+    setVerifying(true);
+    setVerifyResult(null);
+    try {
+      const { data } = await (await import('axios')).default.get(
+        `/api/certificates/verify/${cert.certificate_id}`
+      );
+      setVerifyResult({ valid: true, ...data });
+    } catch {
+      setVerifyResult({ valid: false });
+    } finally {
+      setVerifying(false);
+    }
+  };
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl">
-        {/* Modal header */}
-        <div className="flex justify-between items-center px-6 py-4 border-b">
-          <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+    <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-3 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl">
+
+        {/* Header */}
+        <div className="flex justify-between items-center px-5 py-4 border-b">
+          <h2 className="text-base font-bold text-gray-800 flex items-center gap-2">
             <Award className="w-5 h-5 text-indigo-600" /> Certificate Preview
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X className="w-6 h-6" />
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700">
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Certificate template */}
-        <div className="p-4 sm:p-6 overflow-x-auto">
-          <div
-            ref={certRef}
-            className="relative bg-white mx-auto"
-            style={{ width: '794px', height: '560px', fontFamily: 'Georgia, serif' }}
-          >
-            {/* Outer border */}
-            <div className="absolute inset-2 border-8 border-indigo-800 rounded-lg" />
-            {/* Inner border */}
-            <div className="absolute inset-4 border-2 border-yellow-500 rounded-lg" />
-
-            {/* Corner ornaments */}
-            {['top-3 left-3', 'top-3 right-3', 'bottom-3 left-3', 'bottom-3 right-3'].map((pos, i) => (
-              <div key={i} className={`absolute ${pos} w-10 h-10 flex items-center justify-center`}>
-                <div className="w-8 h-8 border-4 border-yellow-500 rounded-full bg-indigo-800 flex items-center justify-center">
-                  <div className="w-3 h-3 bg-yellow-400 rounded-full" />
-                </div>
-              </div>
-            ))}
-
-            {/* Content */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center px-16 text-center">
-              {/* Header */}
-              <div className="flex items-center gap-3 mb-2">
-                <img
-                  src="/Assest/sadak1.jpg"
-                  alt="Logo"
-                  className="w-14 h-14 rounded-full object-cover border-2 border-indigo-800"
-                  crossOrigin="anonymous"
-                />
-                <div className="text-left">
-                  <p className="text-indigo-900 font-bold text-lg leading-tight">Sadakathullah Appa College</p>
-                  <p className="text-gray-500 text-xs">Tirunelveli, Tamil Nadu</p>
-                </div>
-              </div>
-
-              <div className="w-48 h-0.5 bg-yellow-500 mb-3" />
-
-              <p className="text-yellow-600 text-sm tracking-widest uppercase font-semibold mb-1">
-                Certificate of Achievement
-              </p>
-
-              <p className="text-gray-600 text-sm mb-3">This is to certify that</p>
-
-              <p className="text-indigo-900 font-bold mb-1" style={{ fontSize: '28px' }}>
-                {cert.student_name}
-              </p>
-
-              <p className="text-gray-600 text-sm mb-3">
-                has successfully completed the examination
-              </p>
-
-              <p className="text-indigo-800 font-bold text-xl mb-3">
-                "{cert.exam_name}"
-              </p>
-
-              {/* Score row */}
-              <div className="flex gap-8 mb-4">
-                <div className="text-center">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Score</p>
-                  <p className="text-indigo-900 font-bold text-lg">{cert.score}/{cert.total_marks}</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Percentage</p>
-                  <p className="text-indigo-900 font-bold text-lg">{percentage}%</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Grade</p>
-                  <p className="text-indigo-900 font-bold text-lg">{cert.grade}</p>
-                </div>
-              </div>
-
-              <div className="w-48 h-0.5 bg-yellow-500 mb-3" />
-
-              {/* Footer */}
-              <div className="flex justify-between w-full px-8">
-                <div className="text-center">
-                  <p className="text-xs text-gray-500">Date of Issue</p>
-                  <p className="text-gray-800 font-semibold text-sm">{date}</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs text-gray-500">Certificate ID</p>
-                  <p className="text-indigo-700 font-mono font-semibold text-sm">{cert.certificate_id}</p>
-                </div>
-                <div className="text-center">
-                  <div className="w-20 border-b border-gray-400 mb-1" />
-                  <p className="text-xs text-gray-500">Principal's Signature</p>
-                </div>
-              </div>
+        {/* Canvas preview */}
+        <div className="p-4 overflow-x-auto bg-gray-100">
+          {!bgLoaded && (
+            <div className="flex items-center justify-center h-48 text-gray-400 text-sm">
+              Loading certificate template...
             </div>
-          </div>
+          )}
+          <canvas
+            ref={canvasRef}
+            className="mx-auto rounded shadow-lg"
+            style={{
+              display: bgLoaded ? 'block' : 'none',
+              maxWidth: '100%',
+              height: 'auto'
+            }}
+          />
         </div>
 
-        {/* Download button */}
-        <div className="flex justify-end px-6 py-4 border-t gap-3">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 text-sm font-medium">
-            Close
+        {/* Verify result */}
+        {verifyResult && (
+          <div className={`mx-5 mb-2 px-4 py-3 rounded-lg text-sm flex items-center gap-2 ${
+            verifyResult.valid
+              ? 'bg-green-50 text-green-800 border border-green-200'
+              : 'bg-red-50 text-red-800 border border-red-200'
+          }`}>
+            <ShieldCheck className="w-4 h-4 flex-shrink-0" />
+            {verifyResult.valid
+              ? `✅ Valid certificate — issued to ${verifyResult.student_name} on ${new Date(verifyResult.issued_date).toLocaleDateString('en-IN')}`
+              : '❌ Certificate not found or invalid'}
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="flex flex-wrap justify-end px-5 py-4 border-t gap-2">
+          <button
+            onClick={handleVerify}
+            disabled={verifying}
+            className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 flex items-center gap-2 text-sm font-medium disabled:opacity-60"
+          >
+            <ShieldCheck className="w-4 h-4" />
+            {verifying ? 'Verifying...' : 'Verify'}
           </button>
           <button
-            onClick={handleDownload}
-            disabled={downloading}
-            className="px-5 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 flex items-center gap-2 text-sm font-medium disabled:opacity-60"
+            onClick={handleDownloadPNG}
+            disabled={!bgLoaded}
+            className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 flex items-center gap-2 text-sm font-medium disabled:opacity-60"
+          >
+            <Image className="w-4 h-4" /> PNG
+          </button>
+          <button
+            onClick={handleDownloadPDF}
+            disabled={downloading || !bgLoaded}
+            className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 flex items-center gap-2 text-sm font-medium disabled:opacity-60"
           >
             <Download className="w-4 h-4" />
-            {downloading ? 'Generating...' : 'Download PDF'}
+            {downloading && downloadType === 'pdf' ? 'Generating...' : 'PDF'}
+          </button>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 text-sm font-medium"
+          >
+            Close
           </button>
         </div>
       </div>

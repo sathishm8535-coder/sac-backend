@@ -17,7 +17,7 @@ const getGrade = (percentage) => {
 export const generateCertificate = async (req, res) => {
   try {
     const result = await Result.findById(req.params.resultId)
-      .populate('student_id', 'name')
+      .populate('student_id', 'name department')
       .populate({ path: 'exam_id', populate: { path: 'subject_id' } });
 
     if (!result) return res.status(404).json({ message: 'Result not found' });
@@ -29,24 +29,45 @@ export const generateCertificate = async (req, res) => {
     const exam = await Exam.findById(result.exam_id._id);
     if (!exam.certificateEnabled) return res.status(403).json({ message: 'Certificate generation is disabled for this exam' });
 
-    // Return existing certificate if already generated
     const existing = await Certificate.findOne({ result_id: result._id });
     if (existing) return res.json(existing);
 
     const certificate = await Certificate.create({
-      certificate_id: `SAC-${nanoid(10).toUpperCase()}`,
-      student_id:   result.student_id._id,
-      exam_id:      result.exam_id._id,
-      result_id:    result._id,
-      student_name: result.student_id.name,
-      exam_name:    result.exam_id.title,
-      score:        result.score,
-      total_marks:  result.total_marks,
-      grade:        getGrade(percentage),
-      issued_date:  new Date()
+      certificate_id:  `SAC-${nanoid(10).toUpperCase()}`,
+      student_id:      result.student_id._id,
+      exam_id:         result.exam_id._id,
+      result_id:       result._id,
+      student_name:    result.student_id.name,
+      department:      result.student_id.department || '',
+      exam_name:       result.exam_id.title,
+      score:           result.score,
+      total_marks:     result.total_marks,
+      grade:           getGrade(percentage),
+      issued_date:     new Date()
     });
 
     res.status(201).json(certificate);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// GET /api/certificates/verify/:certificateId
+export const verifyCertificate = async (req, res) => {
+  try {
+    const cert = await Certificate.findOne({ certificate_id: req.params.certificateId })
+      .populate('student_id', 'name email department')
+      .populate('exam_id', 'title');
+    if (!cert) return res.status(404).json({ valid: false, message: 'Certificate not found' });
+    res.json({
+      valid: true,
+      certificate_id: cert.certificate_id,
+      student_name:   cert.student_name,
+      department:     cert.department,
+      exam_name:      cert.exam_name,
+      grade:          cert.grade,
+      issued_date:    cert.issued_date
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

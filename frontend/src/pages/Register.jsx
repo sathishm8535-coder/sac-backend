@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import { UserPlus } from 'lucide-react';
 
 const Register = () => {
-  const [formData, setFormData] = useState({ name: '', email: '', password: '' });
+  const [formData, setFormData] = useState({ name: '', email: '', password: '', department: '' });
   const [loading, setLoading] = useState(false);
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -54,6 +54,18 @@ const Register = () => {
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
+            <input
+              type="text"
+              required
+              placeholder="e.g. Computer Science"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              value={formData.department}
+              onChange={(e) => setFormData({ ...formData, department: e.target.value })}
             />
           </div>
 
