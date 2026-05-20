@@ -16,19 +16,24 @@ const StudentDashboard = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    axios.get('/api/exams/available').then(({ data }) => setExams(data));
-    axios.get('/api/results/my-results').then(({ data }) => setResults(data));
-    axios.get('/api/certificates/my').then(({ data }) => setMyCerts(data));
+    axios.get('/api/exams/available').then(({ data }) => setExams(data)).catch(() => {});
+    axios.get('/api/results/my-results').then(({ data }) => setResults(data)).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'certificates') {
+      axios.get('/api/certificates/my').then(({ data }) => setMyCerts(data)).catch(() => {});
+    }
+  }, [activeTab]);
 
   const handleGetCertificate = async (resultId) => {
     try {
       const { data } = await axios.post(`/api/certificates/generate/${resultId}`);
       setActiveCert(data);
-      // refresh my certs list
-      axios.get('/api/certificates/my').then(({ data }) => setMyCerts(data));
+      axios.get('/api/certificates/my').then(({ data }) => setMyCerts(data)).catch(() => {});
     } catch (err) {
-      alert(err.response?.data?.message || 'Could not generate certificate');
+      const msg = err.response?.data?.message || 'Could not generate certificate';
+      alert(msg);
     }
   };
 
