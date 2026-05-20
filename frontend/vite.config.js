@@ -6,9 +6,9 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',       // auto skipWaiting + clientsClaim
-      injectRegister: false,            // we register manually in main.jsx for reload control
-      devOptions: { enabled: false },   // disabled in dev mode
+      registerType: 'autoUpdate',
+      injectRegister: 'auto',
+      devOptions: { enabled: false },
 
       manifest: {
         name: 'SAC Net Exam',
@@ -41,14 +41,13 @@ export default defineConfig({
       },
 
       workbox: {
-        // Network-first for all navigation and API requests
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api/],
-
+        navigateFallbackDenylist: [/^\/api/, /^https:\/\/sac-backend/],
         runtimeCaching: [
           {
-            // Network-first for HTML pages
-            urlPattern: ({ request }) => request.mode === 'navigate',
+            urlPattern: ({ request, url }) =>
+              request.mode === 'navigate' &&
+              !url.hostname.includes('onrender.com'),
             handler: 'NetworkFirst',
             options: {
               cacheName: 'pages-cache-v1',
@@ -57,8 +56,9 @@ export default defineConfig({
             }
           },
           {
-            // Network-first for JS/CSS assets
-            urlPattern: /\.(js|css)$/,
+            urlPattern: ({ url }) =>
+              /\.(js|css)$/.test(url.pathname) &&
+              !url.hostname.includes('onrender.com'),
             handler: 'NetworkFirst',
             options: {
               cacheName: 'assets-cache-v1',
@@ -67,8 +67,9 @@ export default defineConfig({
             }
           },
           {
-            // Cache-first only for images (rarely change)
-            urlPattern: /\.(png|jpg|jpeg|svg|gif|ico|webp)$/,
+            urlPattern: ({ url }) =>
+              /\.(png|jpg|jpeg|svg|gif|ico|webp)$/.test(url.pathname) &&
+              !url.hostname.includes('onrender.com'),
             handler: 'CacheFirst',
             options: {
               cacheName: 'images-cache-v1',
@@ -76,8 +77,6 @@ export default defineConfig({
             }
           }
         ],
-
-        // Auto-delete old caches on activation
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true
