@@ -43,22 +43,12 @@ export default defineConfig({
       workbox: {
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api/, /^https:\/\/sac-backend/],
+        // Only cache same-origin requests — never touch the backend domain
         runtimeCaching: [
           {
-            urlPattern: ({ request, url }) =>
-              request.mode === 'navigate' &&
-              !url.hostname.includes('onrender.com'),
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'pages-cache-v1',
-              networkTimeoutSeconds: 5,
-              expiration: { maxEntries: 10, maxAgeSeconds: 86400 }
-            }
-          },
-          {
             urlPattern: ({ url }) =>
-              /\.(js|css)$/.test(url.pathname) &&
-              !url.hostname.includes('onrender.com'),
+              url.origin === self.location.origin &&
+              /\.(js|css)$/.test(url.pathname),
             handler: 'NetworkFirst',
             options: {
               cacheName: 'assets-cache-v1',
@@ -68,8 +58,8 @@ export default defineConfig({
           },
           {
             urlPattern: ({ url }) =>
-              /\.(png|jpg|jpeg|svg|gif|ico|webp)$/.test(url.pathname) &&
-              !url.hostname.includes('onrender.com'),
+              url.origin === self.location.origin &&
+              /\.(png|jpg|jpeg|svg|gif|ico|webp)$/.test(url.pathname),
             handler: 'CacheFirst',
             options: {
               cacheName: 'images-cache-v1',
