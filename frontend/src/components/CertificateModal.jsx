@@ -1,124 +1,68 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState } from 'react';
+import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-import { X, Download, Award, ShieldCheck, Image } from 'lucide-react';
-
-// Text positions mapped to the WhatsApp certificate template
-// Adjust x/y values here if the template image layout changes
-const POSITIONS = {
-  studentName: { x: 0.5,   y: 0.445, fontSize: 28, color: '#1e3a5f', bold: true,  align: 'center' },
-  department:  { x: 0.5,   y: 0.515, fontSize: 16, color: '#374151', bold: false, align: 'center' },
-  examName:    { x: 0.5,   y: 0.595, fontSize: 15, color: '#1e3a5f', bold: true,  align: 'center' },
-  score:       { x: 0.5,   y: 0.655, fontSize: 14, color: '#374151', bold: false, align: 'center' },
-  grade:       { x: 0.5,   y: 0.705, fontSize: 18, color: '#1e3a5f', bold: true,  align: 'center' },
-  date:        { x: 0.5,   y: 0.820, fontSize: 13, color: '#374151', bold: false, align: 'center' },
-  certId:      { x: 0.5,   y: 0.870, fontSize: 11, color: '#6b7280', bold: false, align: 'center' },
-};
-
-const drawText = (ctx, W, H, cert) => {
-  const date = new Date(cert.issued_date).toLocaleDateString('en-IN', {
-    day: 'numeric', month: 'long', year: 'numeric'
-  });
-  const percentage = ((cert.score / cert.total_marks) * 100).toFixed(1);
-
-  const fields = [
-    { key: 'studentName', text: cert.student_name },
-    { key: 'department',  text: cert.department || 'Sadakathullah Appa College' },
-    { key: 'examName',    text: cert.exam_name },
-    { key: 'score',       text: `Score: ${cert.score} / ${cert.total_marks}  (${percentage}%)` },
-    { key: 'grade',       text: `Grade: ${cert.grade}` },
-    { key: 'date',        text: `Date: ${date}` },
-    { key: 'certId',      text: `Certificate ID: ${cert.certificate_id}` },
-  ];
-
-  fields.forEach(({ key, text }) => {
-    const pos = POSITIONS[key];
-    ctx.font = `${pos.bold ? 'bold' : 'normal'} ${pos.fontSize}px Georgia, serif`;
-    ctx.fillStyle = pos.color;
-    ctx.textAlign = pos.align;
-    ctx.fillText(text, W * pos.x, H * pos.y);
-  });
-};
+import { X, Download, Award, ShieldCheck, ImagePlus } from 'lucide-react';
+import axios from 'axios';
 
 const CertificateModal = ({ cert, onClose }) => {
-  const canvasRef = useRef();
+  const certRef  = useRef();
+  const [photoSrc,    setPhotoSrc]    = useState(null);
   const [downloading, setDownloading] = useState(false);
-  const [downloadType, setDownloadType] = useState(null);
-  const [verifying, setVerifying] = useState(false);
-  const [verifyResult, setVerifyResult] = useState(null);
-  const [bgLoaded, setBgLoaded] = useState(false);
-  const bgRef = useRef(null);
+  const [verifying,   setVerifying]   = useState(false);
+  const [verifyResult,setVerifyResult]= useState(null);
 
-  const BG_IMAGE = '/Assest/certificate-template.jpg';
+  const date       = new Date(cert.issued_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+  const percentage = ((cert.score / cert.total_marks) * 100).toFixed(1);
+  const dept       = cert.department || 'Sadakathullah Appa College';
 
-  useEffect(() => {
-    const img = new window.Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      bgRef.current = img;
-      setBgLoaded(true);
-    };
-    img.onerror = () => {
-      bgRef.current = null;
-      setBgLoaded(true);
-    };
-    img.src = BG_IMAGE;
-  }, []);
+  /* ── Photo upload ─────────────────────────────────────────── */
+  const handlePhotoUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => setPhotoSrc(ev.target.result);
+    reader.readAsDataURL(file);
+  };
 
-  useEffect(() => {
-    if (!bgLoaded || !canvasRef.current) return;
-    const canvas = canvasRef.current;
-    canvas.width  = 1123;
-    canvas.height = 794;
-    const ctx = canvas.getContext('2d');
+  /* ── Capture canvas from HTML ─────────────────────────────── */
+  const capture = () =>
+    html2canvas(certRef.current, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: false,
+      backgroundColor: '#ffffff',
+      logging: false,
+    });
 
-    if (bgRef.current) {
-      ctx.drawImage(bgRef.current, 0, 0, canvas.width, canvas.height);
-    } else {
-      // Fallback plain design
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.strokeStyle = '#4f46e5';
-      ctx.lineWidth = 12;
-      ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
-    }
-    // Always draw text on top
-    drawText(ctx, canvas.width, canvas.height, cert);
-  }, [bgLoaded, cert]);
-
+  /* ── PDF download ─────────────────────────────────────────── */
   const handleDownloadPDF = async () => {
     setDownloading(true);
-    setDownloadType('pdf');
     try {
-      const canvas = canvasRef.current;
+      const canvas  = await capture();
       const imgData = canvas.toDataURL('image/png', 1.0);
-      const pdf = new jsPDF({
-        orientation: 'landscape',
-        unit: 'px',
-        format: [canvas.width, canvas.height]
-      });
+      const pdf     = new jsPDF({ orientation: 'landscape', unit: 'px', format: [canvas.width, canvas.height] });
       pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
       pdf.save(`certificate-${cert.certificate_id}.pdf`);
     } finally {
       setDownloading(false);
-      setDownloadType(null);
     }
   };
 
-  const handleDownloadPNG = () => {
-    const canvas = canvasRef.current;
-    const link = document.createElement('a');
+  /* ── PNG download ─────────────────────────────────────────── */
+  const handleDownloadPNG = async () => {
+    const canvas = await capture();
+    const link   = document.createElement('a');
     link.download = `certificate-${cert.certificate_id}.png`;
-    link.href = canvas.toDataURL('image/png', 1.0);
+    link.href     = canvas.toDataURL('image/png', 1.0);
     link.click();
   };
 
+  /* ── Verify ───────────────────────────────────────────────── */
   const handleVerify = async () => {
     setVerifying(true);
     setVerifyResult(null);
     try {
-      const { data } = await (await import('axios')).default.get(
-        `/api/certificates/verify/${cert.certificate_id}`
-      );
+      const { data } = await axios.get(`/api/certificates/verify/${cert.certificate_id}`);
       setVerifyResult({ valid: true, ...data });
     } catch {
       setVerifyResult({ valid: false });
@@ -131,7 +75,7 @@ const CertificateModal = ({ cert, onClose }) => {
     <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-3 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl">
 
-        {/* Header */}
+        {/* Modal header */}
         <div className="flex justify-between items-center px-5 py-4 border-b">
           <h2 className="text-base font-bold text-gray-800 flex items-center gap-2">
             <Award className="w-5 h-5 text-indigo-600" /> Certificate Preview
@@ -141,70 +85,189 @@ const CertificateModal = ({ cert, onClose }) => {
           </button>
         </div>
 
-        {/* Canvas preview */}
-        <div className="p-4 overflow-x-auto bg-gray-100">
-          {!bgLoaded && (
-            <div className="flex items-center justify-center h-48 text-gray-400 text-sm">
-              Loading certificate template...
-            </div>
-          )}
-          <canvas
-            ref={canvasRef}
-            className="mx-auto rounded shadow-lg"
+        {/* Photo upload strip */}
+        <div className="px-5 py-3 border-b bg-gray-50 flex items-center gap-3">
+          <label className="flex items-center gap-2 cursor-pointer bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition">
+            <ImagePlus className="w-4 h-4" />
+            {photoSrc ? 'Change Photo' : 'Upload Student Photo'}
+            <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+          </label>
+          {photoSrc && <span className="text-green-600 text-sm font-medium">✓ Photo uploaded</span>}
+          {!photoSrc && <span className="text-gray-400 text-xs">Upload a passport-size photo to include in the certificate</span>}
+        </div>
+
+        {/* ── Certificate design ── */}
+        <div className="p-4 bg-gray-100 overflow-x-auto">
+          <div
+            ref={certRef}
             style={{
-              display: bgLoaded ? 'block' : 'none',
-              maxWidth: '100%',
-              height: 'auto'
+              width: '960px',
+              minHeight: '640px',
+              background: 'linear-gradient(135deg, #0f2557 0%, #1a3a8f 40%, #0f2557 100%)',
+              fontFamily: 'Georgia, "Times New Roman", serif',
+              position: 'relative',
+              margin: '0 auto',
+              padding: '0',
+              boxSizing: 'border-box',
             }}
-          />
+          >
+            {/* Gold outer border */}
+            <div style={{ position:'absolute', inset:'8px', border:'3px solid #c9a84c', pointerEvents:'none', zIndex:1 }} />
+            {/* Thin inner border */}
+            <div style={{ position:'absolute', inset:'16px', border:'1px solid rgba(201,168,76,0.4)', pointerEvents:'none', zIndex:1 }} />
+
+            {/* Corner ornaments */}
+            {[
+              { top:'4px',   left:'4px'  },
+              { top:'4px',   right:'4px' },
+              { bottom:'4px',left:'4px'  },
+              { bottom:'4px',right:'4px' },
+            ].map((style, i) => (
+              <div key={i} style={{ position:'absolute', width:'40px', height:'40px', zIndex:2, ...style }}>
+                <div style={{ width:'100%', height:'100%', border:'3px solid #c9a84c', borderRadius:'50%', background:'#0f2557', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  <div style={{ width:'12px', height:'12px', background:'#c9a84c', borderRadius:'50%' }} />
+                </div>
+              </div>
+            ))}
+
+            {/* Main content */}
+            <div style={{ position:'relative', zIndex:3, padding:'48px 64px', display:'flex', flexDirection:'column', alignItems:'center', gap:'0' }}>
+
+              {/* Header row: logo + title + photo */}
+              <div style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'16px' }}>
+                {/* College logo */}
+                <img
+                  src="/Assest/sadak1.jpg"
+                  alt="College Logo"
+                  crossOrigin="anonymous"
+                  style={{ width:'72px', height:'72px', borderRadius:'50%', objectFit:'cover', border:'3px solid #c9a84c' }}
+                />
+
+                {/* Center title */}
+                <div style={{ textAlign:'center', flex:1, padding:'0 24px' }}>
+                  <div style={{ color:'#c9a84c', fontSize:'11px', letterSpacing:'4px', textTransform:'uppercase', marginBottom:'4px' }}>
+                    Sadakathullah Appa College (Autonomous)
+                  </div>
+                  <div style={{ color:'#ffffff', fontSize:'28px', fontWeight:'bold', letterSpacing:'2px', textTransform:'uppercase', lineHeight:1.2 }}>
+                    Certificate
+                  </div>
+                  <div style={{ color:'#c9a84c', fontSize:'13px', letterSpacing:'3px', textTransform:'uppercase', marginTop:'4px' }}>
+                    of Achievement
+                  </div>
+                </div>
+
+                {/* Student photo */}
+                <div style={{ width:'80px', height:'96px', border:'3px solid #c9a84c', borderRadius:'6px', overflow:'hidden', background:'rgba(255,255,255,0.1)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                  {photoSrc ? (
+                    <img src={photoSrc} alt="Student" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                  ) : (
+                    <div style={{ color:'rgba(201,168,76,0.5)', fontSize:'10px', textAlign:'center', padding:'4px' }}>Photo</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Gold divider */}
+              <div style={{ width:'100%', height:'1px', background:'linear-gradient(90deg, transparent, #c9a84c, transparent)', margin:'8px 0 20px' }} />
+
+              {/* Presented to */}
+              <div style={{ color:'rgba(255,255,255,0.7)', fontSize:'13px', letterSpacing:'2px', textTransform:'uppercase', marginBottom:'8px' }}>
+                This certificate is proudly presented to
+              </div>
+
+              {/* Student name */}
+              <div style={{ color:'#c9a84c', fontSize:'38px', fontWeight:'bold', textAlign:'center', lineHeight:1.2, marginBottom:'6px', maxWidth:'700px', wordBreak:'break-word' }}>
+                {cert.student_name}
+              </div>
+
+              {/* Department */}
+              <div style={{ color:'rgba(255,255,255,0.85)', fontSize:'15px', marginBottom:'16px', textAlign:'center' }}>
+                {dept}
+              </div>
+
+              {/* Body text */}
+              <div style={{ color:'rgba(255,255,255,0.75)', fontSize:'13px', textAlign:'center', lineHeight:1.7, marginBottom:'20px', maxWidth:'640px' }}>
+                has successfully completed the examination and demonstrated outstanding academic performance in
+              </div>
+
+              {/* Exam name */}
+              <div style={{ color:'#ffffff', fontSize:'20px', fontWeight:'bold', textAlign:'center', marginBottom:'24px', padding:'10px 32px', border:'1px solid rgba(201,168,76,0.5)', borderRadius:'4px', background:'rgba(201,168,76,0.08)', maxWidth:'700px', wordBreak:'break-word' }}>
+                {cert.exam_name}
+              </div>
+
+              {/* Score / Grade / Date row */}
+              <div style={{ display:'flex', gap:'48px', marginBottom:'24px', justifyContent:'center' }}>
+                {[
+                  { label:'Score',      value:`${cert.score} / ${cert.total_marks}` },
+                  { label:'Percentage', value:`${percentage}%` },
+                  { label:'Grade',      value:cert.grade },
+                  { label:'Date',       value:date },
+                ].map(({ label, value }) => (
+                  <div key={label} style={{ textAlign:'center' }}>
+                    <div style={{ color:'rgba(255,255,255,0.5)', fontSize:'10px', letterSpacing:'2px', textTransform:'uppercase', marginBottom:'4px' }}>{label}</div>
+                    <div style={{ color:'#c9a84c', fontSize:'16px', fontWeight:'bold' }}>{value}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Gold divider */}
+              <div style={{ width:'100%', height:'1px', background:'linear-gradient(90deg, transparent, #c9a84c, transparent)', margin:'0 0 16px' }} />
+
+              {/* Footer: signature + cert ID */}
+              <div style={{ width:'100%', display:'flex', justifyContent:'space-between', alignItems:'flex-end' }}>
+                <div style={{ textAlign:'center' }}>
+                  <div style={{ width:'120px', height:'1px', background:'rgba(201,168,76,0.6)', marginBottom:'6px' }} />
+                  <div style={{ color:'rgba(255,255,255,0.6)', fontSize:'11px', letterSpacing:'1px' }}>Principal's Signature</div>
+                </div>
+                <div style={{ textAlign:'center' }}>
+                  <div style={{ color:'rgba(255,255,255,0.4)', fontSize:'10px', letterSpacing:'1px', marginBottom:'4px' }}>CERTIFICATE ID</div>
+                  <div style={{ color:'#c9a84c', fontSize:'12px', fontFamily:'monospace', fontWeight:'bold' }}>{cert.certificate_id}</div>
+                </div>
+                <div style={{ textAlign:'center' }}>
+                  <div style={{ width:'120px', height:'1px', background:'rgba(201,168,76,0.6)', marginBottom:'6px' }} />
+                  <div style={{ color:'rgba(255,255,255,0.6)', fontSize:'11px', letterSpacing:'1px' }}>Examiner's Signature</div>
+                </div>
+              </div>
+
+            </div>
+          </div>
         </div>
 
         {/* Verify result */}
         {verifyResult && (
-          <div className={`mx-5 mb-2 px-4 py-3 rounded-lg text-sm flex items-center gap-2 ${
+          <div className={`mx-5 mt-2 px-4 py-3 rounded-lg text-sm flex items-center gap-2 ${
             verifyResult.valid
               ? 'bg-green-50 text-green-800 border border-green-200'
               : 'bg-red-50 text-red-800 border border-red-200'
           }`}>
             <ShieldCheck className="w-4 h-4 flex-shrink-0" />
             {verifyResult.valid
-              ? `✅ Valid certificate — issued to ${verifyResult.student_name} on ${new Date(verifyResult.issued_date).toLocaleDateString('en-IN')}`
+              ? `✅ Valid — issued to ${verifyResult.student_name} on ${new Date(verifyResult.issued_date).toLocaleDateString('en-IN')}`
               : '❌ Certificate not found or invalid'}
           </div>
         )}
 
-        {/* Actions */}
+        {/* Action buttons */}
         <div className="flex flex-wrap justify-end px-5 py-4 border-t gap-2">
-          <button
-            onClick={handleVerify}
-            disabled={verifying}
-            className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 flex items-center gap-2 text-sm font-medium disabled:opacity-60"
-          >
+          <button onClick={handleVerify} disabled={verifying}
+            className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 flex items-center gap-2 text-sm font-medium disabled:opacity-60">
             <ShieldCheck className="w-4 h-4" />
             {verifying ? 'Verifying...' : 'Verify'}
           </button>
-          <button
-            onClick={handleDownloadPNG}
-            disabled={!bgLoaded}
-            className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 flex items-center gap-2 text-sm font-medium disabled:opacity-60"
-          >
-            <Image className="w-4 h-4" /> PNG
+          <button onClick={handleDownloadPNG}
+            className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 flex items-center gap-2 text-sm font-medium">
+            <Download className="w-4 h-4" /> PNG
           </button>
-          <button
-            onClick={handleDownloadPDF}
-            disabled={downloading || !bgLoaded}
-            className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 flex items-center gap-2 text-sm font-medium disabled:opacity-60"
-          >
+          <button onClick={handleDownloadPDF} disabled={downloading}
+            className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 flex items-center gap-2 text-sm font-medium disabled:opacity-60">
             <Download className="w-4 h-4" />
-            {downloading && downloadType === 'pdf' ? 'Generating...' : 'PDF'}
+            {downloading ? 'Generating...' : 'PDF'}
           </button>
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 text-sm font-medium"
-          >
+          <button onClick={onClose}
+            className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 text-sm font-medium">
             Close
           </button>
         </div>
+
       </div>
     </div>
   );
